@@ -17,7 +17,7 @@ Flutter (Dart)
 Spring Boot (Java)
 
 ### Database
-MySQL / Firebase Cloud Firestore
+MySQL
 
 ### Tools and Platforms
 GitHub – Version Control and Collaboration  
@@ -51,13 +51,13 @@ Group06_EduTracker
 ## System Users
 
 ### Student
-Students can submit activity details, upload supporting certificates, track submission status, and view their accumulated activity points.
+Students can view their personal details , submit activity details, upload supporting certificates, track submission status, and view their accumulated activity points.
 
 ### Faculty Advisor
 Faculty Advisors review submitted activities, verify documents, approve or reject submissions, and monitor the activity progress of assigned students.
 
 ### Administrator
-Administrators manage user accounts, assign roles, manage activity categories, configure system settings, and maintain the overall system.
+Administrators manage user accounts, assign roles, manage activity categories and maintain the overall system.
 
 ## Key Features
 
@@ -75,7 +75,7 @@ Administrative User and Category Management
 | Veeravalli Mukesh       | B230609CS | Admin Dashboard, Manage Users Page |
 | Ginne Sai Thanooj Reddy | B230660CS | Student Activity Submission Module |
 | Bollam Rahul Patel      | B230260CS | Faculty Advisor Dashboard          |
-| Duggimi Varshith        | B230923CS | Reports and Activity Tracking      |
+| Duggimi Varshith        | B230923CS | Student Dashboard,Activity History |
 | Dunna Pranathi          | B230924CS | SRS Documentation                  |
 
 ## Version Control
