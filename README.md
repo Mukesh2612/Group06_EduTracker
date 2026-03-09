@@ -6,7 +6,8 @@ Student Activity Points Tracker (EduTracker)
 ## Problem Statement
 In many educational institutions, student activity points such as participation in workshops, hackathons, seminars, technical events, and other extracurricular activities are recorded manually. This manual process is time-consuming, prone to errors, and lacks transparency.
 
-The Student Activity Points Tracker application provides a digital solution to manage, verify, and track student activities efficiently. Students can submit activity details and upload supporting documents, while Faculty Advisors review and approve them. The system ensures transparency, accuracy, and easy monitoring of student activity points across the institution.
+## Objective
+The objective of the Student Activity Points Tracker system is to develop a digital platform that allows students to submit activity details and proof documents, while enabling Faculty Advisors and administrators to verify and manage these submissions efficiently. The system aims to simplify activity tracking, reduce manual work, and maintain an accurate record of student activity points.
 
 ## Technology Stack
 
