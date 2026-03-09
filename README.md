@@ -21,11 +21,13 @@ Spring Boot (Java)
 MySQL
 
 ### Tools and Platforms
-GitHub – Version Control and Collaboration  
-Firebase Authentication  
-Firebase Cloud Messaging  
-Android Studio / IntelliJ IDEA  
-Postman – API Testing
+GitHub – Version control and collaboration
+Flutter – Frontend mobile application development
+Spring Boot (Java) – Backend API development
+MySQL – Database for storing student activities and categories
+Android Studio / VS Code – Flutter development environment
+IntelliJ IDEA – Backend development
+Postman – API testing
 
 ## Project Structure
 
