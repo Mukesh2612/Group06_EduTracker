@@ -100,7 +100,7 @@ fix: corrected form validation logic
 
 ## Documentation
 
-The detailed Software Requirements Specification (SRS) document describing system requirements, architecture, and functionalities is available in the docs folder of this repository.
+The detailed Software Requirements Specification (SRS) document is available in the `docs` folder of this repository. It describes the system requirements, architecture, and functionalities of the application.
 
 ## Developed For
 
