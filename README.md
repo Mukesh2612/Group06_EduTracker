@@ -85,7 +85,7 @@ Administrative User and Category Management
 | Ginne Sai Thanooj Reddy | B230660CS | Student Activity Submission Module |
 | Bollam Rahul Patel      | B230260CS | Faculty Advisor Dashboard          |
 | Duggimi Varshith        | B230923CS | Student Dashboard,Activity History |
-| Dunna Pranathi          | B230924CS | SRS Documentation                  |
+| Dunna Pranathi          | B230924CS | Apply for Activity Points, Manage Activity Categories |
 
 ## Version Control
 
