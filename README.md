@@ -82,7 +82,7 @@ Administrative User and Category Management
 |              Name       |Roll Number|           Contribution             |
 |-------------------------|-----------|------------------------------------|
 | Veeravalli Mukesh       | B230609CS | Admin Dashboard, Manage Users Page |
-| Ginne Sai Thanooj Reddy | B230660CS | Student Activity Submission Module, Login Module |
+| Ginne Sai Thanooj Reddy | B230660CS | Student Activity Submission Module, Login Module , created Database and connected backend to login|
 | Bollam Rahul Patel      | B230260CS | Faculty Advisor Dashboard          |
 | Duggimi Varshith        | B230923CS | Student Dashboard,Activity History |
 | Dunna Pranathi          | B230924CS | Apply for Activity Points, Manage Activity Categories |
