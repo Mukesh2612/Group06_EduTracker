@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+import '../config/api.dart';
+
 class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
 
@@ -16,17 +21,44 @@ class _ManageUsersPageState extends State<ManageUsersPage>
 
   late TabController tab;
 
-  final faList = <Map<String, String>>[
-    {"id": "fa1", "name": "Harsh", "email": "harsh@nitc.ac.in"},
-    {"id": "fa2", "name": "Rahul", "email": "rahul@nitc.ac.in"},
-    {"id": "fa3", "name": "Thanooj", "email": "thanooj@nitc.ac.in"},
-  ];
+  List<Map<String, dynamic>> faList = [];
+  List<Map<String, dynamic>> students = [];
 
-  final students = <Map<String, String>>[
-    {"name": "Mukesh", "email": "mukesh@student.com", "faId": "fa3"},
-    {"name": "Varshith", "email": "varshith@student.com", "faId": "fa1"},
-    {"name": "Pranathi", "email": "pranathi@student.com", "faId": "fa2"},
-  ];
+  Future<void> loadUsers() async {
+    try {
+
+      final url = Uri.parse("$BASE_URL/admin/users");
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+
+        final data = jsonDecode(response.body);
+
+        setState(() {
+
+          faList = data
+              .where((u) => u["role"] == "FA")
+              .map<Map<String, dynamic>>((u) => {
+            "id": u["id"].toString(),
+            "name": u["name"],
+            "email": u["email"]
+          }).toList();
+
+          students = data
+              .where((u) => u["role"] == "STUDENT")
+              .map<Map<String, dynamic>>((u) => {
+            "name": u["name"],
+            "email": u["email"],
+            "faId": u["faId"]?.toString() ?? ""
+          }).toList();
+        });
+
+      }
+
+    } catch (e) {
+      toast("Backend connection failed");
+    }
+  }
 
   String faSearch = "", stuSearch = "";
 
@@ -34,6 +66,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
   void initState() {
     super.initState();
     tab = TabController(length: 2, vsync: this);
+    loadUsers();
   }
 
   @override
@@ -48,8 +81,14 @@ class _ManageUsersPageState extends State<ManageUsersPage>
   int countStudents(String faId) =>
       students.where((s) => s["faId"] == faId).length;
 
-  String faName(String faId) => faList
-      .firstWhere((x) => x["id"] == faId, orElse: () => {"name": "NA"})["name"]!;
+  String faName(String faId) {
+    final fa = faList.firstWhere(
+          (x) => x["id"] == faId,
+      orElse: () => {"name": "NA"},
+    );
+
+    return fa["name"] ?? "NA";
+  }
 
   InputDecoration searchDec(String hint) => InputDecoration(
     hintText: hint,
@@ -74,8 +113,10 @@ class _ManageUsersPageState extends State<ManageUsersPage>
 
   // ---------------- ADD FA ----------------
   void addFa() {
-    final n = TextEditingController();
-    final e = TextEditingController();
+
+    final name = TextEditingController();
+    final email = TextEditingController();
+    final dept = TextEditingController();
 
     showDialog(
       context: context,
@@ -84,31 +125,60 @@ class _ManageUsersPageState extends State<ManageUsersPage>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: n, decoration: const InputDecoration(hintText: "FA Name")),
+
+            TextField(
+              controller: name,
+              decoration: const InputDecoration(hintText: "Name"),
+            ),
+
             const SizedBox(height: 10),
-            TextField(controller: e, decoration: const InputDecoration(hintText: "FA Email")),
+
+            TextField(
+              controller: email,
+              decoration: const InputDecoration(hintText: "Email"),
+            ),
+
+            const SizedBox(height: 10),
+
+            TextField(
+              controller: dept,
+              decoration: const InputDecoration(hintText: "Department"),
+            ),
+
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: black),
-            onPressed: () {
-              if (n.text.trim().isEmpty || e.text.trim().isEmpty) {
-                toast("Enter name & email");
+            onPressed: () async {
+
+              if (name.text.isEmpty || email.text.isEmpty || dept.text.isEmpty) {
+                toast("Fill all fields");
                 return;
               }
-              setState(() {
-                faList.add({
-                  "id": "fa${faList.length + 1}",
-                  "name": n.text.trim(),
-                  "email": e.text.trim(),
-                });
-              });
+
+              await http.post(
+                Uri.parse("$BASE_URL/admin/add-fa"),
+                headers: {"Content-Type": "application/json"},
+                body: jsonEncode({
+                  "name": name.text.trim(),
+                  "email": email.text.trim(),
+                  "password": "1234",
+                  "dept": dept.text.trim()
+                }),
+              );
+
               Navigator.pop(context);
+              loadUsers();
             },
             child: const Text("Add"),
-          ),
+          )
+
         ],
       ),
     );
@@ -116,57 +186,117 @@ class _ManageUsersPageState extends State<ManageUsersPage>
 
   // ---------------- ADD STUDENT ----------------
   void addStudent() {
-    if (faList.isEmpty) return toast("Add FA first");
 
-    final n = TextEditingController();
-    final e = TextEditingController();
-    String faId = faList.first["id"]!;
+    if (faList.isEmpty) {
+      toast("Create a Faculty Advisor first");
+      return;
+    }
+
+    final name = TextEditingController();
+    final email = TextEditingController();
+    final roll = TextEditingController();
+    final dept = TextEditingController();
+
+    String selectedFa = faList.isNotEmpty ? faList.first["id"] : "";
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Add Student"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: n, decoration: const InputDecoration(hintText: "Student Name")),
-            const SizedBox(height: 10),
-            TextField(controller: e, decoration: const InputDecoration(hintText: "Student Email")),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              value: faId,
-              decoration: const InputDecoration(hintText: "Assign FA"),
-              items: faList
-                  .map((fa) => DropdownMenuItem(value: fa["id"], child: Text(fa["name"]!)))
-                  .toList(),
-              onChanged: (v) => faId = v ?? faId,
-            ),
-          ],
+        content: StatefulBuilder(
+          builder: (context, setLocalState) {
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(hintText: "Name"),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextField(
+                  controller: roll,
+                  decoration: const InputDecoration(hintText: "Roll Number"),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextField(
+                  controller: email,
+                  decoration: const InputDecoration(hintText: "Email"),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextField(
+                  controller: dept,
+                  decoration: const InputDecoration(hintText: "Department"),
+                ),
+
+                const SizedBox(height: 10),
+
+                DropdownButtonFormField(
+                  initialValue: selectedFa,
+                  items: faList.map((fa) {
+                    return DropdownMenuItem(
+                      value: fa["id"],
+                      child: Text(fa["name"] ?? "Unknown"),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    setLocalState(() {
+                      selectedFa = v.toString();
+                    });
+                  },
+                  decoration: const InputDecoration(labelText: "Faculty Advisor"),
+                )
+
+              ],
+            );
+          },
         ),
+
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: black),
-            onPressed: () {
-              if (n.text.trim().isEmpty || e.text.trim().isEmpty) {
-                toast("Enter name & email");
-                return;
-              }
-              setState(() {
-                students.add({"name": n.text.trim(), "email": e.text.trim(), "faId": faId});
-              });
+            onPressed: () async {
+
+              await http.post(
+
+                Uri.parse("$BASE_URL/admin/add-student"),
+                headers: {"Content-Type": "application/json"},
+                body: jsonEncode({
+                  "name": name.text.trim(),
+                  "email": email.text.trim(),
+                  "password": "1234",
+                  "dept": dept.text.trim(),
+                  "rollNo": roll.text.trim(),
+                  "faId": selectedFa
+                }),
+              );
+
               Navigator.pop(context);
+              loadUsers();
             },
             child: const Text("Add"),
-          ),
+          )
+
         ],
       ),
     );
   }
 
   // ---------------- UI TILES ----------------
-  Widget faTile(Map<String, String> fa) {
-    final c = countStudents(fa["id"]!);
+  Widget faTile(Map<String, dynamic> fa) {
+    final c = countStudents(fa["id"] ?? "");
 
     return InkWell(
       onTap: () async {
@@ -176,7 +306,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             builder: (_) => FaStudentsPage(
               faId: fa["id"]!,
               faName: fa["name"]!,
-              students: List<Map<String, String>>.from(students),
+              students: students.map((e) => Map<String, String>.from(e)).toList(),
             ),
           ),
         );
@@ -200,7 +330,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
           children: [
             CircleAvatar(
               backgroundColor: black,
-              child: Text(fa["name"]![0].toUpperCase(),
+              child: Text((fa["name"] ?? "U")[0].toUpperCase(),
                   style: const TextStyle(color: bg, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(width: 12),
@@ -208,10 +338,10 @@ class _ManageUsersPageState extends State<ManageUsersPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(fa["name"]!,
+                  Text(fa["name"] ?? "Unknown",
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 2),
-                  Text(fa["email"]!, style: const TextStyle(color: dark)),
+                  Text(fa["email"] ?? "", style: const TextStyle(color: dark)),
                   const SizedBox(height: 6),
                   Text("Students: $c",
                       style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -225,7 +355,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     );
   }
 
-  Widget studentTile(Map<String, String> s, int i) {
+  Widget studentTile(Map<String, dynamic> s, int i) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -238,7 +368,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
         children: [
           CircleAvatar(
             backgroundColor: black,
-            child: Text(s["name"]![0].toUpperCase(),
+            child: Text((s["name"] ?? "U")[0].toUpperCase(),
                 style: const TextStyle(color: bg, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 12),
@@ -246,10 +376,10 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(s["name"]!,
+                Text(s["name"] ?? "Unknown",
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 2),
-                Text(s["email"]!, style: const TextStyle(color: dark)),
+                Text(s["email"] ?? "", style: const TextStyle(color: dark)),
                 const SizedBox(height: 6),
                 Text("FA: ${faName(s["faId"] ?? "")}",
                     style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -382,7 +512,8 @@ class FaStudentsPage extends StatefulWidget {
   State<FaStudentsPage> createState() => _FaStudentsPageState();
 }
 
-class _FaStudentsPageState extends State<FaStudentsPage> {
+class _FaStudentsPageState extends State<FaStudentsPage>
+    with SingleTickerProviderStateMixin {
   static const bg = Color(0xFFE8E9EB);
   static const light = Color(0xFFCCCDC6);
   static const dark = Color(0xFF746D69);
@@ -506,7 +637,7 @@ class _FaStudentsPageState extends State<FaStudentsPage> {
                       children: [
                         CircleAvatar(
                           backgroundColor: black,
-                          child: Text(s["name"]![0].toUpperCase(),
+                          child: Text((s["name"] ?? "U")[0].toUpperCase(),
                               style: const TextStyle(
                                   color: bg, fontWeight: FontWeight.bold)),
                         ),
@@ -515,12 +646,12 @@ class _FaStudentsPageState extends State<FaStudentsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(s["name"]!,
+                              Text(s["name"] ?? "Unknown",
                                   style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800)),
                               const SizedBox(height: 2),
-                              Text(s["email"]!,
+                              Text(s["email"] ?? "",
                                   style: const TextStyle(color: dark)),
                             ],
                           ),

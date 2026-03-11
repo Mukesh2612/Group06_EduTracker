@@ -1,49 +1,47 @@
-/// MASTER CATEGORY DATA
+// lib/student/category_data.dart
 
 final Map<String, Map<String, int>> departmentData = {
-  "Mandatory Basket": {
-    "Environmental Studies": 5,
-    "Value Education": 5,
-    "Indian Constitution": 5,
-    "Sustainable Technologies": 5,
+  "Mandatory Courses": {
+    "Environmental Studies (mandatory)": 5,
+    "Value Education (mandatory)": 5,
+    "Indian Constitution (mandatory)": 5,
   },
-  "Student Association": {
-    "Office Bearer": 5,
-    "Coordinator": 5,
-    "Participation": 2,
-    "Prize Winner": 5,
+  "Department Activities": {
+    "Department Association - Participation (per activity)": 2,
+    "Class Representative (per semester per rep)": 5,
+    "Any other activity assigned by FA": 2,
   },
-  "Other Activities": {"Volunteering": 3},
-  "Department Workshops": {"Participation": 2, "Prize Winner": 5},
-  "FA Assigned": {"Class Representative": 5, "Other": 2},
-  "Online Courses": {"MOOC Completion": 5},
 };
 
 final Map<String, Map<String, int>> instituteData = {
-  "Participation": {
-    "Outside Institute Presentation": 10,
-    "Inside Institute Presentation": 5,
-    "Conference Participation": 3,
-    "Prize Winner": 5,
+  "Research & Conferences": {
+    "Presenting paper outside Institute": 10,
+    "Presenting paper inside Institute": 5,
+    "Participating in conferences/workshops": 3,
   },
-  "Organizing": {"Coordinator": 5, "Team Lead": 3, "Volunteer": 2},
-  "Membership": {"Office Bearer": 3, "Member": 2, "SAC Executive": 10},
+  "Clubs & Events": {
+    "Prize winners (club events)": 5,
+    "Coordinator (event)": 5,
+    "Team lead (event)": 3,
+    "Student volunteer (event)": 2,
+    "Club office bearer (per semester)": 3,
+    "Club member (per semester)": 2,
+    "SAC Executive Member (per semester)": 10,
+  },
   "Competitions": {
-    "Institute Participation": 5,
-    "Institute Prize": 10,
-    "District Participation": 10,
-    "District Prize": 15,
-    "State Participation": 15,
-    "State Prize": 20,
-    "National Participation": 20,
-    "National Prize": 25,
+    "Institute level competition participation": 5,
+    "Institute level competition prize winner": 10,
+    "District level participation": 10,
+    "District level prize winner": 15,
+    "State level participation": 15,
+    "State level prize winner": 20,
+    "National level participation": 20,
+    "National level prize winner": 25,
   },
-  "NSS": {"Regular Activity": 5, "Special Event": 10, "Annual Camp": 20},
-  "NCC": {
-    "Institutional Training": 5,
-    "Camp": 8,
-    "Special Camp": 10,
-    "B Certificate": 15,
-    "C Certificate": 30,
+  "NSS / NCC": {
+    "NSS Participation (basic events)": 5,
+    "NSS Annual Camp": 20,
+    "NCC Institutional training (per semester)": 5,
+    "NCC C Certificate Exam (directorate level)": 30,
   },
 };

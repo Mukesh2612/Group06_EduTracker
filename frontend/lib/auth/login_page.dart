@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../admin/admin_dashboard.dart';
 import '../student/student_dashboard.dart';
 import '../Fa/fa_dashboard.dart';
+import '../config/api.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -29,7 +30,7 @@ class _LoginPageState extends State<LoginPage> {
     final e = email.text.trim();
     final p = pass.text.trim();
 
-    final url = Uri.parse("http://192.168.1.11:8080/auth/login");
+    final url = Uri.parse("$BASE_URL/auth/login");
 
     try {
       final response = await http.post(
