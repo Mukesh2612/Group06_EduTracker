@@ -10,16 +10,25 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String name;
 
-    @Column(unique = true)
+    @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(nullable = false)
     private String password;
+
+    @Column(nullable = false)
     private String role;
 
     private String dept;
+
+    @Column(unique = true)
     private String rollNo;
+
+    @Column(unique = true)
+    private String empId;
 
     private Long faId;
 
@@ -50,6 +59,10 @@ public class User {
     // ROLL NUMBER
     public String getRollNo() { return rollNo; }
     public void setRollNo(String rollNo) { this.rollNo = rollNo; }
+
+    // EMP ID
+    public String getEmpId() { return empId; }
+    public void setEmpId(String empId) { this.empId = empId; }
 
     // FACULTY ADVISOR ID
     public Long getFaId() { return faId; }
