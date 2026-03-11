@@ -115,6 +115,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
   void addFa() {
 
     final name = TextEditingController();
+    final empId = TextEditingController();
     final email = TextEditingController();
     final dept = TextEditingController();
 
@@ -136,6 +137,13 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             TextField(
               controller: email,
               decoration: const InputDecoration(hintText: "Email"),
+            ),
+
+            const SizedBox(height: 10),
+
+            TextField(
+              controller: empId,
+              decoration: const InputDecoration(hintText: "EmpID"),
             ),
 
             const SizedBox(height: 10),
@@ -168,6 +176,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                 body: jsonEncode({
                   "name": name.text.trim(),
                   "email": email.text.trim(),
+                  "empId": empId.text.trim(),
                   "password": "1234",
                   "dept": dept.text.trim()
                 }),
@@ -184,8 +193,27 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     );
   }
 
+  Future<void> loadFAByDept(String dept) async {
+
+    final response = await http.get(
+      Uri.parse("$BASE_URL/admin/fa?dept=$dept"),
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+
+      setState(() {
+        faList = data.map((fa) => {
+          "id": fa["id"].toString(),
+          "name": fa["name"]
+        }).toList();
+      });
+    }
+  }
+
   // ---------------- ADD STUDENT ----------------
-  void addStudent() {
+
+  void addStudent({String? preSelectedFa}) {
 
     if (faList.isEmpty) {
       toast("Create a Faculty Advisor first");
@@ -197,7 +225,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     final roll = TextEditingController();
     final dept = TextEditingController();
 
-    String selectedFa = faList.isNotEmpty ? faList.first["id"] : "";
+    String selectedFa = preSelectedFa ?? (faList.isNotEmpty ? faList.first["id"] : "");
 
     showDialog(
       context: context,
@@ -234,19 +262,47 @@ class _ManageUsersPageState extends State<ManageUsersPage>
                 TextField(
                   controller: dept,
                   decoration: const InputDecoration(hintText: "Department"),
+                  onChanged: (value) async {
+
+                    if (value.isNotEmpty) {
+
+                      final response = await http.get(
+                        Uri.parse("$BASE_URL/admin/fa?dept=${value.trim()}"),
+                      );
+
+                      if (response.statusCode == 200) {
+
+                        final List data = jsonDecode(response.body);
+
+                        setLocalState(() {
+                          faList = data.map((fa) => {
+                            "id": fa["id"].toString(),
+                            "name": fa["name"]
+                          }).toList();
+
+                          if (faList.isNotEmpty) {
+                            selectedFa = faList.first["id"];
+                          }
+                        });
+
+                      }
+                    }
+                  },
                 ),
 
                 const SizedBox(height: 10),
 
                 DropdownButtonFormField(
-                  initialValue: selectedFa,
+                  value: selectedFa,
                   items: faList.map((fa) {
                     return DropdownMenuItem(
                       value: fa["id"],
                       child: Text(fa["name"] ?? "Unknown"),
                     );
                   }).toList(),
-                  onChanged: (v) {
+                  onChanged: preSelectedFa != null
+                      ? null
+                      : (v) {
                     setLocalState(() {
                       selectedFa = v.toString();
                     });
@@ -293,7 +349,6 @@ class _ManageUsersPageState extends State<ManageUsersPage>
       ),
     );
   }
-
   // ---------------- UI TILES ----------------
   Widget faTile(Map<String, dynamic> fa) {
     final c = countStudents(fa["id"] ?? "");
@@ -305,16 +360,26 @@ class _ManageUsersPageState extends State<ManageUsersPage>
           MaterialPageRoute(
             builder: (_) => FaStudentsPage(
               faId: fa["id"]!,
-              faName: fa["name"]!,
-              students: students.map((e) => Map<String, String>.from(e)).toList(),
+              faName: fa["name"] ?? "Unknown",
+              students: students.map((e) => {
+                "name": e["name"]?.toString() ?? "",
+                "email": e["email"]?.toString() ?? "",
+                "roll": e["roll"]?.toString() ?? "",
+                "faId": e["faId"]?.toString() ?? ""
+              }).toList(),
             ),
           ),
         );
 
+
         if (updated != null && updated is List<Map<String, String>>) {
           setState(() {
-            students.clear();
-            students.addAll(updated);
+            students = updated.map((e) => {
+              "name": e["name"],
+              "email": e["email"],
+              "roll": e["roll"],
+              "faId": e["faId"]
+            }).toList();
           });
         }
       },
@@ -330,7 +395,11 @@ class _ManageUsersPageState extends State<ManageUsersPage>
           children: [
             CircleAvatar(
               backgroundColor: black,
-              child: Text((fa["name"] ?? "U")[0].toUpperCase(),
+              child: Text(
+                  ((fa["name"] ?? "U").toString().isNotEmpty
+                      ? (fa["name"] ?? "U")[0]
+                      : "U")
+                      .toUpperCase(),
                   style: const TextStyle(color: bg, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(width: 12),
@@ -368,8 +437,13 @@ class _ManageUsersPageState extends State<ManageUsersPage>
         children: [
           CircleAvatar(
             backgroundColor: black,
-            child: Text((s["name"] ?? "U")[0].toUpperCase(),
-                style: const TextStyle(color: bg, fontWeight: FontWeight.bold)),
+            child: Text(
+              ((s["name"] ?? "U").toString().isNotEmpty
+                  ? (s["name"] ?? "U")[0]
+                  : "U")
+                  .toUpperCase(),
+              style: const TextStyle(color: bg, fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -613,7 +687,9 @@ class _FaStudentsPageState extends State<FaStudentsPage>
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: addStudentHere,
+                onPressed: () {
+                  Navigator.pop(context);
+                },
                 icon: const Icon(Icons.person_add),
                 label: const Text("Add Student",
                     style: TextStyle(fontWeight: FontWeight.w700)),
@@ -637,7 +713,11 @@ class _FaStudentsPageState extends State<FaStudentsPage>
                       children: [
                         CircleAvatar(
                           backgroundColor: black,
-                          child: Text((s["name"] ?? "U")[0].toUpperCase(),
+                          child: Text(
+                              ((s["name"] ?? "U").toString().isNotEmpty
+                                  ? (s["name"] ?? "U")[0]
+                                  : "U")
+                                  .toUpperCase(),
                               style: const TextStyle(
                                   color: bg, fontWeight: FontWeight.bold)),
                         ),
