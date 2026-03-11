@@ -21,8 +21,16 @@ public class AdminController {
         if(userRepository.findByEmail(newFA.getEmail()).isPresent()){
             return "Email already exists";
         }
+        if(newFA.getEmpId() == null || newFA.getEmpId().isEmpty()){
+            return "Employee ID required for FA";
+        }
+        if(newFA.getDept() == null || newFA.getDept().isEmpty()){
+            return "Department required for FA";
+        }
 
         newFA.setRole("FA");
+        newFA.setRollNo(null);
+        newFA.setFaId(null);
 
         userRepository.save(newFA);
 
@@ -36,7 +44,20 @@ public class AdminController {
             return "Email already exists";
         }
 
+        if(newStudent.getRollNo() == null || newStudent.getRollNo().isEmpty()){
+            return "Roll number is required for students";
+        }
+
+        if(newStudent.getFaId() == null){
+            return "Faculty advisor required for student";
+        }
+
+        if(newStudent.getDept() == null || newStudent.getDept().isEmpty()){
+            return "Department required for student";
+        }
+        
         newStudent.setRole("STUDENT");
+        newStudent.setEmpId(null);
 
         userRepository.save(newStudent);
 
