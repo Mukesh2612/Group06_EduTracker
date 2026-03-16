@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -25,4 +26,25 @@ public class AuthController {
 
         return "Invalid Credentials";
     }
+
+    @PostMapping("/change-password")
+public String changePassword(@RequestBody User reqUser) {
+
+    Optional<User> userOpt = userRepository.findByEmail(reqUser.getEmail());
+
+    if(userOpt.isEmpty()){
+        return "User not found";
+    }
+
+    User user = userOpt.get();
+
+    if(!user.getPassword().equals(reqUser.getPassword())){
+        return "Old password incorrect";
+    }
+
+    user.setPassword(reqUser.getNewPassword());
+    userRepository.save(user);
+
+    return "Password updated successfully";
+}
 }

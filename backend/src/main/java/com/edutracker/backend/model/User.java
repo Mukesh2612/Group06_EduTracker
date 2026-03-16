@@ -32,6 +32,12 @@ public class User {
 
     private Long faId;
 
+    private int totalPoints;
+
+    private String newPassword;
+
+    private String faEmail;
+
     // ID
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -67,4 +73,26 @@ public class User {
     // FACULTY ADVISOR ID
     public Long getFaId() { return faId; }
     public void setFaId(Long faId) { this.faId = faId; }
+
+    // TOtal Points
+    public int getTotalPoints(){ return totalPoints; }
+    public void setTotalPoints(int totalPoints){ this.totalPoints = totalPoints; }
+
+    // GET NEW PASS
+    public String getNewPassword() {
+        return newPassword;
+    }
+
+    //SET NEW PASS
+    public void setNewPassword(String newPassword) {
+        this.newPassword = newPassword;
+    }
+
+    public String getFaEmail() {
+    return faEmail;
+}
+
+    public void setFaEmail(String faEmail) {
+        this.faEmail = faEmail;
+    }
 }
