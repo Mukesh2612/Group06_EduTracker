@@ -58,10 +58,12 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
         else if (result.contains("FA")) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const FADashboard()),
-          );
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FADashboard(email: e),
+                ),
+              );
         }
         else {
           msg("Invalid credentials");
@@ -436,6 +438,35 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     super.dispose();
   }
 
+  Future<void> changePassword() async {
+    final url = Uri.parse("$BASE_URL/auth/change-password");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email.text.trim(),
+          "password": oldPass.text.trim(),
+          "newPassword": newPass.text.trim(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        msg(response.body);
+
+        if (response.body.contains("success")) {
+          Navigator.pop(context);
+        }
+      } else {
+        msg("Server error");
+      }
+    } catch (e) {
+      print("CHANGE PASSWORD ERROR: $e");
+      msg("Cannot connect to server");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -528,7 +559,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     return;
                   }
 
-                  msg("Password updated (UI only)");
+                  changePassword();
                 },
                 child: const Text("Update Password"),
               ),
