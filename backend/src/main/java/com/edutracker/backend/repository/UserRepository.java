@@ -22,4 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // GET STUDENTS UNDER A FA
     List<User> findByFaId(Long faId);
+
+    // GET FAEMAIL
+
+    List<User> findByFaEmail(String faEmail);
 }
