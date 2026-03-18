@@ -8,9 +8,10 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    // LOGIN
-    Optional<User> findByEmail(String email);
 
+    // LOGIN
+    Optional<User> findByEmailIgnoreCase(String email);
+    User findByResetToken(String token);
     // GET ALL USERS WITH A ROLE
     List<User> findByRole(String role);
 
@@ -22,8 +23,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // GET STUDENTS UNDER A FA
     List<User> findByFaId(Long faId);
-
-    // GET FAEMAIL
-
-    List<User> findByFaEmail(String faEmail);
 }
