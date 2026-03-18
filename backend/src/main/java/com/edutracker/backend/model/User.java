@@ -1,98 +1,90 @@
 package com.edutracker.backend.model;
 
+import java.time.LocalDateTime;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "Users")
+@Table(name="users")
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private String name;
-
-    @Column(nullable = false, unique = true)
     private String email;
-
-    @Column(nullable = false)
     private String password;
-
-    @Column(nullable = false)
     private String role;
-
     private String dept;
-
-    @Column(unique = true)
     private String rollNo;
-
-    @Column(unique = true)
     private String empId;
-
     private Long faId;
+    private int points;
 
-    private int totalPoints;
+    // 🔐 Forgot password fields
+    private String resetToken;
+    private LocalDateTime tokenExpiry;
 
-    private String newPassword;
+    // ⭐ First login check
+    private boolean firstLogin = true;
+    @Override
+    public String toString() {
+    return "User{" +
+            "id=" + id +
+            ", email='" + email + '\'' +
+            '}';
+    }
+    public User() {}
 
-    private String faEmail;
-
-    // ID
+    // ── id ──────────────────────────────────────────
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    // NAME
+    // ── name ────────────────────────────────────────
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    // EMAIL
+    // ── email ───────────────────────────────────────
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
-    // PASSWORD
+    // ── password ────────────────────────────────────
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
 
-    // ROLE
+    // ── role ────────────────────────────────────────
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
 
-    // DEPARTMENT
+    // ── dept ────────────────────────────────────────
     public String getDept() { return dept; }
     public void setDept(String dept) { this.dept = dept; }
 
-    // ROLL NUMBER
+    // ── rollNo ──────────────────────────────────────
     public String getRollNo() { return rollNo; }
     public void setRollNo(String rollNo) { this.rollNo = rollNo; }
 
-    // EMP ID
+    // ── empId ───────────────────────────────────────
     public String getEmpId() { return empId; }
     public void setEmpId(String empId) { this.empId = empId; }
 
-    // FACULTY ADVISOR ID
+    // ── faId ────────────────────────────────────────
     public Long getFaId() { return faId; }
     public void setFaId(Long faId) { this.faId = faId; }
 
-    // TOtal Points
-    public int getTotalPoints(){ return totalPoints; }
-    public void setTotalPoints(int totalPoints){ this.totalPoints = totalPoints; }
+    // ── points ──────────────────────────────────────
+    public int getPoints() { return points; }
+    public void setPoints(int points) { this.points = points; }
 
-    // GET NEW PASS
-    public String getNewPassword() {
-        return newPassword;
-    }
+    // ── firstLogin ──────────────────────────────────
+    public boolean isFirstLogin() { return firstLogin; }
+    public void setFirstLogin(boolean firstLogin) { this.firstLogin = firstLogin; }
 
-    //SET NEW PASS
-    public void setNewPassword(String newPassword) {
-        this.newPassword = newPassword;
-    }
+    // 🔐 ── resetToken ───────────────────────────────
+    public String getResetToken() { return resetToken; }
+    public void setResetToken(String resetToken) { this.resetToken = resetToken; }
 
-    public String getFaEmail() {
-    return faEmail;
-}
-
-    public void setFaEmail(String faEmail) {
-        this.faEmail = faEmail;
-    }
+    // 🔐 ── tokenExpiry ──────────────────────────────
+    public LocalDateTime getTokenExpiry() { return tokenExpiry; }
+    public void setTokenExpiry(LocalDateTime tokenExpiry) { this.tokenExpiry = tokenExpiry; }
 }
