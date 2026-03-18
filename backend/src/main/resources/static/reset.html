@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reset Password</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            background: linear-gradient(135deg, #eef1f5, #dfe3e8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 40px 30px;
+            width: 350px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: #222;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #000;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.05);
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            border-radius: 12px;
+            border: none;
+            background: #000;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.25s;
+        }
+
+        button:hover {
+            background: #222;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        .msg {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #444;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>Reset Password</h2>
+
+    <div class="input-group">
+        <input type="password" id="newPass" placeholder="New Password">
+    </div>
+
+    <div class="input-group">
+        <input type="password" id="confirmPass" placeholder="Confirm Password">
+    </div>
+
+    <button onclick="resetPassword()">Update Password</button>
+
+    <div id="msg" class="msg"></div>
+</div>
+
+<script>
+function getToken() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("token");
+}
+
+async function resetPassword() {
+    const token = getToken();
+    const newPass = document.getElementById("newPass").value;
+    const confirmPass = document.getElementById("confirmPass").value;
+    const msg = document.getElementById("msg");
+
+    msg.className = "msg";
+
+    if (!newPass || !confirmPass) {
+        msg.innerText = "Fill all fields";
+        msg.classList.add("error");
+        return;
+    }
+
+    if (newPass !== confirmPass) {
+        msg.innerText = "Passwords do not match";
+        msg.classList.add("error");
+        return;
+    }
+
+    try {
+        const res = await fetch("http://localhost:8081/auth/reset-password", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                token: token,
+                password: newPass
+            })
+        });
+
+        const text = await res.text();
+
+        if (res.status === 200) {
+            msg.innerText = "Password updated successfully!";
+            msg.classList.add("success");
+
+            setTimeout(() => {
+                window.location.href = "http://localhost:60727"; // your login page
+            }, 2000);
+        } else {
+            msg.innerText = text;
+            msg.classList.add("error");
+        }
+
+    } catch (e) {
+        msg.innerText = "Server error";
+        msg.classList.add("error");
+    }
+}
+</script>
+
+</body>
+</html>
