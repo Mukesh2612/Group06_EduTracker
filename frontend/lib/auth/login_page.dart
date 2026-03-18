@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -19,18 +18,21 @@ class _LoginPageState extends State<LoginPage> {
   final email = TextEditingController();
   final pass = TextEditingController();
   bool showPass = false;
+  bool isLoading = false;
 
-  // Theme colors
   static const bg = Color(0xFFE8E9EB);
   static const light = Color(0xFFCCCDC6);
   static const dark = Color(0xFF746D69);
   static const black = Color(0xFF262626);
 
+  /// ================= LOGIN =================
   Future<void> loginUser() async {
     final e = email.text.trim();
     final p = pass.text.trim();
 
     final url = Uri.parse("$BASE_URL/auth/login");
+
+    setState(() => isLoading = true);
 
     try {
       final response = await http.post(
@@ -43,45 +45,67 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (response.statusCode == 200) {
-        final result = response.body;
+        final data = jsonDecode(response.body);
 
-        if (result.contains("STUDENT")) {
+        final role = data["role"];
+        final firstLogin = data["firstLogin"] ?? false;
+
+        /// 🚨 FIRST LOGIN
+        if (firstLogin == true) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const StudentDashboard()),
+            MaterialPageRoute(
+              builder: (_) => ChangePasswordPage(prefilledEmail: e),
+            ),
           );
+          return;
         }
-        else if (result.contains("ADMIN")) {
+
+        /// STUDENT
+        if (role == "STUDENT") {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const AdminDashboard()),
+            MaterialPageRoute(
+              builder: (_) => StudentDashboard(email: data["email"]),
+            ),
           );
         }
-        else if (result.contains("FA")) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => FADashboard(email: e),
-                ),
-              );
+
+        /// ADMIN
+        else if (role == "ADMIN") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AdminDashboard(),
+            ),
+          );
         }
-        else {
-          msg("Invalid credentials");
+
+        /// FA
+        else if (role == "FA") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FADashboard(user: data),
+            ),
+          );
+        } else {
+          msg("Invalid role");
         }
       } else {
-        msg("Login failed");
+        msg("Invalid email or password");
       }
     } catch (e) {
       print("LOGIN ERROR: $e");
       msg("Cannot connect to server");
     }
+
+    setState(() => isLoading = false);
   }
 
-
   void msg(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(text)));
   }
 
   InputDecoration field(String hint, {Widget? suffix}) {
@@ -90,7 +114,8 @@ class _LoginPageState extends State<LoginPage> {
       filled: true,
       fillColor: Colors.white,
       suffixIcon: suffix,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      contentPadding:
+      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: light),
@@ -133,12 +158,11 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 const SizedBox(height: 40),
 
-                // LOGO
+                /// LOGO
                 Center(
                   child: Image.asset(
                     "assets/design.png",
                     height: 160,
-                    fit: BoxFit.contain,
                   ),
                 ),
 
@@ -157,23 +181,23 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 30),
 
-                // Email
+                /// EMAIL
                 TextField(
                   controller: email,
                   decoration: field("Email"),
-                  keyboardType: TextInputType.emailAddress,
                 ),
 
                 const SizedBox(height: 14),
 
-                // Password
+                /// PASSWORD
                 TextField(
                   controller: pass,
                   obscureText: !showPass,
                   decoration: field(
                     "Password",
                     suffix: IconButton(
-                      onPressed: () => setState(() => showPass = !showPass),
+                      onPressed: () =>
+                          setState(() => showPass = !showPass),
                       icon: Icon(
                         showPass
                             ? Icons.visibility_off_outlined
@@ -186,7 +210,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 10),
 
-                // Forgot password
+                /// FORGOT PASSWORD
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -207,29 +231,21 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 10),
 
-                // Login button
+                /// LOGIN BUTTON
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: primaryBtn(),
-                    onPressed: () {
-                      if (email.text.isEmpty || pass.text.isEmpty) {
-                        msg("Enter email and password");
-                        return;
-                      }
-
-                      loginUser();
-                    },
-                    child: const Text(
-                      "Login",
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    onPressed: isLoading ? null : loginUser,
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text("Login"),
                   ),
                 ),
 
                 const SizedBox(height: 12),
 
-                // Change password
+                /// CHANGE PASSWORD
                 Center(
                   child: TextButton(
                     onPressed: () {
@@ -258,14 +274,15 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// ======================================================
-// Forgot Password (UI only)
-// ======================================================
+/// ======================================================
+/// FORGOT PASSWORD (UI ONLY)
+/// ======================================================
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  State<ForgotPasswordPage> createState() =>
+      _ForgotPasswordPageState();
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
@@ -277,37 +294,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   static const black = Color(0xFF262626);
 
   void msg(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text)),
-    );
-  }
-
-  InputDecoration field(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: light),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: black, width: 1.5),
-      ),
-    );
-  }
-
-  ButtonStyle primaryBtn() {
-    return ElevatedButton.styleFrom(
-      backgroundColor: black,
-      foregroundColor: bg,
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
@@ -324,44 +312,29 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         backgroundColor: bg,
         elevation: 0,
         iconTheme: const IconThemeData(color: black),
-        title: const Text(
-          "Forgot Password",
-          style: TextStyle(color: black),
-        ),
+        title: const Text("Forgot Password",
+            style: TextStyle(color: black)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Enter your email to reset password",
-              style: TextStyle(
-                color: dark,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 14),
             TextField(
               controller: email,
-              decoration: field("Email"),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: primaryBtn(),
-                onPressed: () {
-                  if (email.text.trim().isEmpty) {
-                    msg("Enter your email");
-                    return;
-                  }
-                  msg("Reset link sent (UI only)");
-                },
-                child: const Text("Send Reset Link"),
+              decoration: InputDecoration(
+                hintText: "Email",
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => msg("Reset link sent (UI only)"),
+              child: const Text("Send Reset Link"),
+            )
           ],
         ),
       ),
@@ -369,14 +342,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 }
 
-// ======================================================
-// Change Password (UI only)
-// ======================================================
+/// ======================================================
+/// CHANGE PASSWORD
+/// ======================================================
 class ChangePasswordPage extends StatefulWidget {
-  const ChangePasswordPage({super.key});
+  final String? prefilledEmail;
+
+  const ChangePasswordPage({super.key, this.prefilledEmail});
 
   @override
-  State<ChangePasswordPage> createState() => _ChangePasswordPageState();
+  State<ChangePasswordPage> createState() =>
+      _ChangePasswordPageState();
 }
 
 class _ChangePasswordPageState extends State<ChangePasswordPage> {
@@ -385,48 +361,53 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final newPass = TextEditingController();
   final confirmPass = TextEditingController();
 
-  bool showOld = false;
-  bool showNew = false;
-  bool showConfirm = false;
-
   static const bg = Color(0xFFE8E9EB);
-  static const light = Color(0xFFCCCDC6);
-  static const dark = Color(0xFF746D69);
   static const black = Color(0xFF262626);
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.prefilledEmail != null) {
+      email.text = widget.prefilledEmail!;
+    }
+  }
+
   void msg(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(text)));
   }
 
-  InputDecoration field(String hint, {Widget? suffix}) {
-    return InputDecoration(
-      hintText: hint,
-      filled: true,
-      fillColor: Colors.white,
-      suffixIcon: suffix,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: light),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: black, width: 1.5),
-      ),
-    );
-  }
+  Future<void> changePassword() async {
+    if (newPass.text != confirmPass.text) {
+      msg("Passwords not matching");
+      return;
+    }
 
-  ButtonStyle primaryBtn() {
-    return ElevatedButton.styleFrom(
-      backgroundColor: black,
-      foregroundColor: bg,
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-    );
+    try {
+      final res = await http.post(
+        Uri.parse("$BASE_URL/auth/change-password"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email.text,
+          "oldPassword": oldPass.text,
+          "newPassword": newPass.text,
+        }),
+      );
+
+      if (res.statusCode == 200) {
+        msg("Password updated");
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+              (route) => false,
+        );
+      } else {
+        msg("Invalid old password");
+      }
+    } catch (e) {
+      msg("Server error");
+    }
   }
 
   @override
@@ -438,35 +419,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     super.dispose();
   }
 
-  Future<void> changePassword() async {
-    final url = Uri.parse("$BASE_URL/auth/change-password");
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "email": email.text.trim(),
-          "password": oldPass.text.trim(),
-          "newPassword": newPass.text.trim(),
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        msg(response.body);
-
-        if (response.body.contains("success")) {
-          Navigator.pop(context);
-        }
-      } else {
-        msg("Server error");
-      }
-    } catch (e) {
-      print("CHANGE PASSWORD ERROR: $e");
-      msg("Cannot connect to server");
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -475,95 +427,22 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         backgroundColor: bg,
         elevation: 0,
         iconTheme: const IconThemeData(color: black),
-        title: const Text(
-          "Change Password",
-          style: TextStyle(color: black),
-        ),
+        title:
+        const Text("Change Password", style: TextStyle(color: black)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           children: [
-            TextField(
-              controller: email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: field("Email"),
-            ),
+            TextField(controller: email, decoration: const InputDecoration(hintText: "Email")),
             const SizedBox(height: 12),
-            TextField(
-              controller: oldPass,
-              obscureText: !showOld,
-              decoration: field(
-                "Old Password",
-                suffix: IconButton(
-                  onPressed: () => setState(() => showOld = !showOld),
-                  icon: Icon(
-                    showOld
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: dark,
-                  ),
-                ),
-              ),
-            ),
+            TextField(controller: oldPass, obscureText: true, decoration: const InputDecoration(hintText: "Old Password")),
             const SizedBox(height: 12),
-            TextField(
-              controller: newPass,
-              obscureText: !showNew,
-              decoration: field(
-                "New Password",
-                suffix: IconButton(
-                  onPressed: () => setState(() => showNew = !showNew),
-                  icon: Icon(
-                    showNew
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: dark,
-                  ),
-                ),
-              ),
-            ),
+            TextField(controller: newPass, obscureText: true, decoration: const InputDecoration(hintText: "New Password")),
             const SizedBox(height: 12),
-            TextField(
-              controller: confirmPass,
-              obscureText: !showConfirm,
-              decoration: field(
-                "Confirm Password",
-                suffix: IconButton(
-                  onPressed: () => setState(() => showConfirm = !showConfirm),
-                  icon: Icon(
-                    showConfirm
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: dark,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: primaryBtn(),
-                onPressed: () {
-                  if (email.text.trim().isEmpty ||
-                      oldPass.text.trim().isEmpty ||
-                      newPass.text.trim().isEmpty ||
-                      confirmPass.text.trim().isEmpty) {
-                    msg("Fill all fields");
-                    return;
-                  }
-
-                  if (newPass.text.trim() != confirmPass.text.trim()) {
-                    msg("Passwords not matching");
-                    return;
-                  }
-
-                  changePassword();
-                },
-                child: const Text("Update Password"),
-              ),
-            ),
+            TextField(controller: confirmPass, obscureText: true, decoration: const InputDecoration(hintText: "Confirm Password")),
+            const SizedBox(height: 20),
+            ElevatedButton(onPressed: changePassword, child: const Text("Update Password")),
           ],
         ),
       ),
