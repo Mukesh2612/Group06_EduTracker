@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'category_data.dart';
 
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ApplyActivityScreen extends StatefulWidget {
-  const ApplyActivityScreen({super.key});
+  final int studentId;
+
+  const ApplyActivityScreen({
+    super.key,
+    required this.studentId,
+  });
 
   @override
   State<ApplyActivityScreen> createState() => _ApplyActivityScreenState();
@@ -69,15 +76,53 @@ class _ApplyActivityScreenState extends State<ApplyActivityScreen> {
   }
 
   Future<void> pickProofFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'png'],
-    );
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'png'],
+        withData: true,
+      );
 
-    if (result != null) {
-      setState(() {
-        fileName = result.files.single.name;
-      });
+      if (result == null) {
+        msg("No file selected");
+        return;
+      }
+
+      final file = result.files.single;
+
+      if (file.bytes == null) {
+        msg("Failed to read file");
+        return;
+      }
+
+      var request = http.MultipartRequest(
+        "POST",
+        Uri.parse("http://localhost:8080/api/upload"),
+      );
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          "file",
+          file.bytes!,
+          filename: file.name,
+        ),
+      );
+
+      var response = await request.send();
+      var responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200 && responseBody != "ERROR") {
+        setState(() {
+          fileName = responseBody.replaceAll('"', '').trim();
+        });
+
+        msg("Certificate uploaded successfully");
+      } else {
+        msg("Upload failed");
+      }
+    } catch (e) {
+      print(e);
+      msg("Upload error");
     }
   }
 
@@ -90,6 +135,35 @@ class _ApplyActivityScreenState extends State<ApplyActivityScreen> {
       points = null;
       fileName = null;
     });
+  }
+
+  Future<void> submitApplication() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (fileName == null) {
+      msg("Please upload proof before submitting");
+      return;
+    }
+    final res = await http.post(
+      Uri.parse("http://localhost:8080/api/submissions/submit"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "studentId": widget.studentId,
+        "title": titleController.text.trim(),
+        "level": selectedLevel,
+        "activityGroup": selectedGroup,
+        "category": selectedCategory,
+        "points": points,
+        "proofFile": fileName
+      }),
+    );
+
+    if (res.statusCode == 200) {
+      resetForm();
+      Navigator.pop(context, true);
+    } else {
+      msg("Submission failed");
+    }
   }
 
   List<String> get groupList {
@@ -171,9 +245,10 @@ class _ApplyActivityScreenState extends State<ApplyActivityScreen> {
                     TextFormField(
                       controller: titleController,
                       decoration: fieldStyle("Activity Title"),
-                      validator: (value) => value == null || value.trim().isEmpty
-                          ? "Enter activity title"
-                          : null,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                              ? "Enter activity title"
+                              : null,
                     ),
 
                     const SizedBox(height: 14),
@@ -192,7 +267,8 @@ class _ApplyActivityScreenState extends State<ApplyActivityScreen> {
                           child: Text("Institute Level"),
                         ),
                       ],
-                      validator: (value) => value == null ? "Select level" : null,
+                      validator: (value) =>
+                          value == null ? "Select level" : null,
                       onChanged: (value) {
                         setState(() {
                           selectedLevel = value;
@@ -212,12 +288,13 @@ class _ApplyActivityScreenState extends State<ApplyActivityScreen> {
                       items: groupList
                           .map(
                             (g) => DropdownMenuItem(
-                          value: g,
-                          child: Text(g),
-                        ),
-                      )
+                              value: g,
+                              child: Text(g),
+                            ),
+                          )
                           .toList(),
-                      validator: (value) => value == null ? "Select group" : null,
+                      validator: (value) =>
+                          value == null ? "Select group" : null,
                       onChanged: (value) {
                         setState(() {
                           selectedGroup = value;
@@ -236,13 +313,13 @@ class _ApplyActivityScreenState extends State<ApplyActivityScreen> {
                       items: categoryList
                           .map(
                             (c) => DropdownMenuItem(
-                          value: c,
-                          child: Text(c),
-                        ),
-                      )
+                              value: c,
+                              child: Text(c),
+                            ),
+                          )
                           .toList(),
                       validator: (value) =>
-                      value == null ? "Select category" : null,
+                          value == null ? "Select category" : null,
                       onChanged: (value) {
                         setState(() => selectedCategory = value);
                         updatePoints(value);
@@ -368,8 +445,7 @@ class _ApplyActivityScreenState extends State<ApplyActivityScreen> {
                       return;
                     }
 
-                    msg("Application Sent to FA");
-                    resetForm();
+                    submitApplication();
                   },
                   child: const Text(
                     "Submit Application",
