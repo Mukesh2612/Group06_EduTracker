@@ -22,6 +22,7 @@ class AdminDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: bg,
+      key: const Key("adminDashboard"),
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
