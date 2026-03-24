@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -14,6 +13,7 @@ class ManageUsersPage extends StatefulWidget {
 
 class _ManageUsersPageState extends State<ManageUsersPage>
     with SingleTickerProviderStateMixin {
+
   static const bg = Color(0xFFE8E9EB);
   static const light = Color(0xFFCCCDC6);
   static const dark = Color(0xFF746D69);
@@ -24,11 +24,28 @@ class _ManageUsersPageState extends State<ManageUsersPage>
   List<Map<String, dynamic>> faList = [];
   List<Map<String, dynamic>> students = [];
 
+  String faSearch = "";
+  String stuSearch = "";
+
+  @override
+  void initState() {
+    super.initState();
+    tab = TabController(length: 2, vsync: this);
+    loadUsers();
+  }
+
+  void toast(String t) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(t)));
+  }
+
+  // ================= LOAD USERS =================
   Future<void> loadUsers() async {
+
     try {
 
-      final url = Uri.parse("$BASE_URL/admin/users");
-      final response = await http.get(url);
+      final response =
+      await http.get(Uri.parse("$BASE_URL/auth/users"));
 
       if (response.statusCode == 200) {
 
@@ -40,19 +57,42 @@ class _ManageUsersPageState extends State<ManageUsersPage>
               .where((u) => u["role"] == "FA")
               .map<Map<String, dynamic>>((u) => {
             "id": u["id"].toString(),
-            "name": u["name"],
-            "email": u["email"]
-          }).toList();
+            "name": u["name"] ?? "",
+            "email": u["email"] ?? ""
+          })
+              .toList();
 
           students = data
               .where((u) => u["role"] == "STUDENT")
               .map<Map<String, dynamic>>((u) => {
-            "name": u["name"],
-            "email": u["email"],
+            "id": u["id"].toString(),
+            "name": u["name"] ?? "",
+            "email": u["email"] ?? "",
             "faId": u["faId"]?.toString() ?? ""
-          }).toList();
+          })
+              .toList();
         });
+      }
+    } catch (e) {
+      toast("Backend connection failed");
+    }
+  }
 
+  // ================= DELETE USER =================
+  Future<void> deleteUser(String id) async {
+
+    try {
+
+      final response =
+      await http.delete(Uri.parse("$BASE_URL/auth/delete/$id"));
+
+      if (response.statusCode == 200) {
+
+        toast("User deleted");
+        loadUsers();
+
+      } else {
+        toast("Delete failed");
       }
 
     } catch (e) {
@@ -60,58 +100,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     }
   }
 
-  String faSearch = "", stuSearch = "";
-
-  @override
-  void initState() {
-    super.initState();
-    tab = TabController(length: 2, vsync: this);
-    loadUsers();
-  }
-
-  @override
-  void dispose() {
-    tab.dispose();
-    super.dispose();
-  }
-
-  void toast(String t) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
-
-  int countStudents(String faId) =>
-      students.where((s) => s["faId"] == faId).length;
-
-  String faName(String faId) {
-    final fa = faList.firstWhere(
-          (x) => x["id"] == faId,
-      orElse: () => {"name": "NA"},
-    );
-
-    return fa["name"] ?? "NA";
-  }
-
-  InputDecoration searchDec(String hint) => InputDecoration(
-    hintText: hint,
-    prefixIcon: const Icon(Icons.search),
-    filled: true,
-    fillColor: Colors.white,
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: light),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: black, width: 1.4),
-    ),
-  );
-
-  ButtonStyle btn() => ElevatedButton.styleFrom(
-    backgroundColor: black,
-    foregroundColor: bg,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  );
-
-  // ---------------- ADD FA ----------------
+  // ================= ADD FA =================
   void addFa() {
 
     final name = TextEditingController();
@@ -127,32 +116,16 @@ class _ManageUsersPageState extends State<ManageUsersPage>
           mainAxisSize: MainAxisSize.min,
           children: [
 
-            TextField(
-              controller: name,
-              decoration: const InputDecoration(hintText: "Name"),
-            ),
-
+            TextField(key: const Key("faNameField"),controller: name, decoration: const InputDecoration(hintText: "Name")),
             const SizedBox(height: 10),
 
-            TextField(
-              controller: email,
-              decoration: const InputDecoration(hintText: "Email"),
-            ),
-
+            TextField(key: const Key("faEmailField"), controller: email, decoration: const InputDecoration(hintText: "Email")),
             const SizedBox(height: 10),
 
-            TextField(
-              controller: empId,
-              decoration: const InputDecoration(hintText: "EmpID"),
-            ),
-
+            TextField(controller: empId, decoration: const InputDecoration(hintText: "Emp ID")),
             const SizedBox(height: 10),
 
-            TextField(
-              controller: dept,
-              decoration: const InputDecoration(hintText: "Department"),
-            ),
-
+            TextField(controller: dept, decoration: const InputDecoration(hintText: "Department")),
           ],
         ),
         actions: [
@@ -163,15 +136,11 @@ class _ManageUsersPageState extends State<ManageUsersPage>
           ),
 
           ElevatedButton(
+            key: const Key("submitFaButton"),
             onPressed: () async {
 
-              if (name.text.isEmpty || email.text.isEmpty || dept.text.isEmpty) {
-                toast("Fill all fields");
-                return;
-              }
-
               await http.post(
-                Uri.parse("$BASE_URL/admin/add-fa"),
+                Uri.parse("$BASE_URL/auth/add-fa"),
                 headers: {"Content-Type": "application/json"},
                 body: jsonEncode({
                   "name": name.text.trim(),
@@ -187,36 +156,16 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             },
             child: const Text("Add"),
           )
-
         ],
       ),
     );
   }
 
-  Future<void> loadFAByDept(String dept) async {
-
-    final response = await http.get(
-      Uri.parse("$BASE_URL/admin/fa?dept=$dept"),
-    );
-
-    if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
-
-      setState(() {
-        faList = data.map((fa) => {
-          "id": fa["id"].toString(),
-          "name": fa["name"]
-        }).toList();
-      });
-    }
-  }
-
-  // ---------------- ADD STUDENT ----------------
-
-  void addStudent({String? preSelectedFa}) {
+  // ================= ADD STUDENT =================
+  void addStudent() {
 
     if (faList.isEmpty) {
-      toast("Create a Faculty Advisor first");
+      toast("Create Faculty Advisor first");
       return;
     }
 
@@ -225,96 +174,41 @@ class _ManageUsersPageState extends State<ManageUsersPage>
     final roll = TextEditingController();
     final dept = TextEditingController();
 
-    String selectedFa = preSelectedFa ?? (faList.isNotEmpty ? faList.first["id"] : "");
+    String selectedFa = faList.first["id"];
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Add Student"),
-        content: StatefulBuilder(
-          builder: (context, setLocalState) {
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+            TextField(controller: name, decoration: const InputDecoration(hintText: "Name")),
+            const SizedBox(height: 10),
 
-                TextField(
-                  controller: name,
-                  decoration: const InputDecoration(hintText: "Name"),
-                ),
+            TextField(controller: roll, decoration: const InputDecoration(hintText: "Roll Number")),
+            const SizedBox(height: 10),
 
-                const SizedBox(height: 10),
+            TextField(controller: email, decoration: const InputDecoration(hintText: "Email")),
+            const SizedBox(height: 10),
 
-                TextField(
-                  controller: roll,
-                  decoration: const InputDecoration(hintText: "Roll Number"),
-                ),
+            TextField(controller: dept, decoration: const InputDecoration(hintText: "Department")),
+            const SizedBox(height: 10),
 
-                const SizedBox(height: 10),
-
-                TextField(
-                  controller: email,
-                  decoration: const InputDecoration(hintText: "Email"),
-                ),
-
-                const SizedBox(height: 10),
-
-                TextField(
-                  controller: dept,
-                  decoration: const InputDecoration(hintText: "Department"),
-                  onChanged: (value) async {
-
-                    if (value.isNotEmpty) {
-
-                      final response = await http.get(
-                        Uri.parse("$BASE_URL/admin/fa?dept=${value.trim()}"),
-                      );
-
-                      if (response.statusCode == 200) {
-
-                        final List data = jsonDecode(response.body);
-
-                        setLocalState(() {
-                          faList = data.map((fa) => {
-                            "id": fa["id"].toString(),
-                            "name": fa["name"]
-                          }).toList();
-
-                          if (faList.isNotEmpty) {
-                            selectedFa = faList.first["id"];
-                          }
-                        });
-
-                      }
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 10),
-
-                DropdownButtonFormField(
-                  value: selectedFa,
-                  items: faList.map((fa) {
-                    return DropdownMenuItem(
-                      value: fa["id"],
-                      child: Text(fa["name"] ?? "Unknown"),
-                    );
-                  }).toList(),
-                  onChanged: preSelectedFa != null
-                      ? null
-                      : (v) {
-                    setLocalState(() {
-                      selectedFa = v.toString();
-                    });
-                  },
-                  decoration: const InputDecoration(labelText: "Faculty Advisor"),
-                )
-
-              ],
-            );
-          },
+            DropdownButtonFormField(
+              value: selectedFa,
+              items: faList.map((fa) {
+                return DropdownMenuItem(
+                  value: fa["id"],
+                  child: Text(fa["name"] ?? ""),
+                );
+              }).toList(),
+              onChanged: (v) => selectedFa = v.toString(),
+              decoration: const InputDecoration(labelText: "Faculty Advisor"),
+            )
+          ],
         ),
-
         actions: [
 
           TextButton(
@@ -326,8 +220,7 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             onPressed: () async {
 
               await http.post(
-
-                Uri.parse("$BASE_URL/admin/add-student"),
+                Uri.parse("$BASE_URL/auth/add-student"),
                 headers: {"Content-Type": "application/json"},
                 body: jsonEncode({
                   "name": name.text.trim(),
@@ -344,218 +237,224 @@ class _ManageUsersPageState extends State<ManageUsersPage>
             },
             child: const Text("Add"),
           )
-
         ],
       ),
     );
   }
-  // ---------------- UI TILES ----------------
-  Widget faTile(Map<String, dynamic> fa) {
-    final c = countStudents(fa["id"] ?? "");
+
+  // ================= USER CARD =================
+  Widget userCard(String id, String name, String email, {bool isFa = false}) {
 
     return InkWell(
-      onTap: () async {
-        final updated = await Navigator.push(
+
+      onTap: isFa
+          ? () {
+        Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => FaStudentsPage(
-              faId: fa["id"]!,
-              faName: fa["name"] ?? "Unknown",
-              students: students.map((e) => {
-                "name": e["name"]?.toString() ?? "",
-                "email": e["email"]?.toString() ?? "",
-                "roll": e["roll"]?.toString() ?? "",
-                "faId": e["faId"]?.toString() ?? ""
-              }).toList(),
+            builder: (_) => FAStudentsPage(
+              faId: id,
+              faName: name,
+              students: students,
             ),
           ),
         );
+      }
+          : null,
 
-
-        if (updated != null && updated is List<Map<String, String>>) {
-          setState(() {
-            students = updated.map((e) => {
-              "name": e["name"],
-              "email": e["email"],
-              "roll": e["roll"],
-              "faId": e["faId"]
-            }).toList();
-          });
-        }
-      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: light),
         ),
         child: Row(
           children: [
+
             CircleAvatar(
               backgroundColor: black,
               child: Text(
-                  ((fa["name"] ?? "U").toString().isNotEmpty
-                      ? (fa["name"] ?? "U")[0]
-                      : "U")
-                      .toUpperCase(),
-                  style: const TextStyle(color: bg, fontWeight: FontWeight.bold)),
+                  (name.isNotEmpty ? name[0] : "?").toUpperCase(),
+                style: const TextStyle(color: bg, fontWeight: FontWeight.bold),
+              ),
             ),
+
             const SizedBox(width: 12),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(fa["name"] ?? "Unknown",
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 2),
-                  Text(fa["email"] ?? "", style: const TextStyle(color: dark)),
-                  const SizedBox(height: 6),
-                  Text("Students: $c",
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 16)),
+                  const SizedBox(height: 3),
+                  Text(email, style: const TextStyle(color: dark)),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: dark),
+
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () {
+
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text("Delete User"),
+                    content: const Text("Are you sure you want to delete this user?"),
+                    actions: [
+
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      ),
+
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          deleteUser(id);
+                        },
+                        child: const Text("Delete"),
+                      )
+                    ],
+                  ),
+                );
+              },
+            )
           ],
         ),
       ),
     );
   }
 
-  Widget studentTile(Map<String, dynamic> s, int i) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: light),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: black,
-            child: Text(
-              ((s["name"] ?? "U").toString().isNotEmpty
-                  ? (s["name"] ?? "U")[0]
-                  : "U")
-                  .toUpperCase(),
-              style: const TextStyle(color: bg, fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(s["name"] ?? "Unknown",
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 2),
-                Text(s["email"] ?? "", style: const TextStyle(color: dark)),
-                const SizedBox(height: 6),
-                Text("FA: ${faName(s["faId"] ?? "")}",
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () => setState(() => students.removeAt(i)),
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------- MAIN ----------------
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
+
     final faFiltered = faList.where((fa) {
       final x = "${fa["name"]} ${fa["email"]}".toLowerCase();
       return x.contains(faSearch.toLowerCase());
     }).toList();
 
     final stuFiltered = students.where((s) {
-      final x = "${s["name"]} ${s["email"]} ${faName(s["faId"] ?? "")}".toLowerCase();
+      final x = "${s["name"]} ${s["email"]}".toLowerCase();
       return x.contains(stuSearch.toLowerCase());
     }).toList();
 
     return Scaffold(
       backgroundColor: bg,
+      key: const Key("manageUsersPage"),
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
         iconTheme: const IconThemeData(color: black),
-        title: const Text("Manage Users",
-            style: TextStyle(color: black, fontWeight: FontWeight.w800)),
+        title: const Text(
+          "Manage Users",
+          style: TextStyle(color: black, fontWeight: FontWeight.w800),
+        ),
         bottom: TabBar(
           controller: tab,
           labelColor: black,
           unselectedLabelColor: dark,
           indicatorColor: black,
-          tabs: const [Tab(text: "Faculty Advisors"), Tab(text: "Students")],
+          tabs: const [
+            Tab(text: "Faculty Advisors"),
+            Tab(text: "Students"),
+          ],
         ),
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(18),
         child: TabBarView(
           controller: tab,
           children: [
-            // FA TAB
+
+            // ---------- FA TAB ----------
             Column(
               children: [
+
                 TextField(
-                  decoration: searchDec("Search Faculty Advisor..."),
+                  decoration: const InputDecoration(
+                    hintText: "Search Faculty Advisor",
+                    prefixIcon: Icon(Icons.search),
+                  ),
                   onChanged: (v) => setState(() => faSearch = v),
                 ),
+
                 const SizedBox(height: 14),
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    style: btn(),
+                    key: const Key("addFaButton"),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: black,
+                        foregroundColor: bg),
                     onPressed: addFa,
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: const Text("Add Faculty Advisor",
-                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    icon: const Icon(Icons.person_add),
+                    label: const Text("Add Faculty Advisor"),
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
                 Expanded(
                   child: ListView.builder(
                     itemCount: faFiltered.length,
-                    itemBuilder: (_, i) => faTile(faFiltered[i]),
+                    itemBuilder: (_, i) {
+                      final fa = faFiltered[i];
+                      return userCard(
+                          fa["id"], fa["name"], fa["email"],
+                          isFa: true);
+                    },
                   ),
                 ),
               ],
             ),
 
-            // STUDENT TAB
+            // ---------- STUDENT TAB ----------
             Column(
               children: [
+
                 TextField(
-                  decoration: searchDec("Search Student / FA..."),
+                  decoration: const InputDecoration(
+                    hintText: "Search Student",
+                    prefixIcon: Icon(Icons.search),
+                  ),
                   onChanged: (v) => setState(() => stuSearch = v),
                 ),
+
                 const SizedBox(height: 14),
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    style: btn(),
+                    key: const Key("addStudentButton"),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: black,
+                        foregroundColor: bg),
                     onPressed: addStudent,
                     icon: const Icon(Icons.person_add),
-                    label: const Text("Add Student",
-                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    label: const Text("Add Student"),
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
                 Expanded(
                   child: ListView.builder(
                     itemCount: stuFiltered.length,
-                    itemBuilder: (_, i) => studentTile(stuFiltered[i], i),
+                    itemBuilder: (_, i) {
+                      final s = stuFiltered[i];
+                      return userCard(s["id"], s["name"], s["email"]);
+                    },
                   ),
                 ),
               ],
@@ -567,15 +466,13 @@ class _ManageUsersPageState extends State<ManageUsersPage>
   }
 }
 
-// ======================================================
-// FA STUDENTS PAGE (MINIMAL)
-// ======================================================
-class FaStudentsPage extends StatefulWidget {
+class FAStudentsPage extends StatelessWidget {
+
   final String faId;
   final String faName;
-  final List<Map<String, String>> students;
+  final List students;
 
-  const FaStudentsPage({
+  const FAStudentsPage({
     super.key,
     required this.faId,
     required this.faName,
@@ -583,179 +480,37 @@ class FaStudentsPage extends StatefulWidget {
   });
 
   @override
-  State<FaStudentsPage> createState() => _FaStudentsPageState();
-}
-
-class _FaStudentsPageState extends State<FaStudentsPage>
-    with SingleTickerProviderStateMixin {
-  static const bg = Color(0xFFE8E9EB);
-  static const light = Color(0xFFCCCDC6);
-  static const dark = Color(0xFF746D69);
-  static const black = Color(0xFF262626);
-
-  late List<Map<String, String>> students;
-  String search = "";
-
-  @override
-  void initState() {
-    super.initState();
-    students = widget.students;
-  }
-
-  void addStudentHere() {
-    final n = TextEditingController();
-    final e = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text("Add Student to ${widget.faName}"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: n, decoration: const InputDecoration(hintText: "Student Name")),
-            const SizedBox(height: 10),
-            TextField(controller: e, decoration: const InputDecoration(hintText: "Student Email")),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: black),
-            onPressed: () {
-              if (n.text.trim().isEmpty || e.text.trim().isEmpty) return;
-              setState(() {
-                students.add({"name": n.text.trim(), "email": e.text.trim(), "faId": widget.faId});
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Add"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final faStudents = students.where((s) => s["faId"] == widget.faId).toList();
 
-    final filtered = faStudents.where((s) {
-      final x = "${s["name"]} ${s["email"]}".toLowerCase();
-      return x.contains(search.toLowerCase());
-    }).toList();
+    final faStudents =
+    students.where((s) => s["faId"] == faId).toList();
 
     return Scaffold(
-      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: bg,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: black),
-        title: Text("${widget.faName} Students",
-            style: const TextStyle(color: black, fontWeight: FontWeight.w800)),
+        title: Text("$faName's Students"),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            TextField(
-              decoration: InputDecoration(
-                hintText: "Search student...",
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: light),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: black, width: 1.4),
+
+      body: faStudents.isEmpty
+          ? const Center(child: Text("No students assigned"))
+          : ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: faStudents.length,
+        itemBuilder: (_, i) {
+
+          final s = faStudents[i];
+
+          return Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Text(
+                  s["name"][0].toUpperCase(),
                 ),
               ),
-              onChanged: (v) => setState(() => search = v),
+              title: Text(s["name"]),
+              subtitle: Text(s["email"]),
             ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: black,
-                  foregroundColor: bg,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.person_add),
-                label: const Text("Add Student",
-                    style: TextStyle(fontWeight: FontWeight.w700)),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Expanded(
-              child: ListView.builder(
-                itemCount: filtered.length,
-                itemBuilder: (_, i) {
-                  final s = filtered[i];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: light),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: black,
-                          child: Text(
-                              ((s["name"] ?? "U").toString().isNotEmpty
-                                  ? (s["name"] ?? "U")[0]
-                                  : "U")
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                  color: bg, fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(s["name"] ?? "Unknown",
-                                  style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800)),
-                              const SizedBox(height: 2),
-                              Text(s["email"] ?? "",
-                                  style: const TextStyle(color: dark)),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => setState(() => students.remove(s)),
-                          icon: const Icon(Icons.delete_outline,
-                              color: Colors.red),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: black,
-        onPressed: () {
-          Navigator.pop(context, students);
+          );
         },
-        child: const Icon(Icons.check, color: bg),
       ),
     );
   }
