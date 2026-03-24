@@ -11,12 +11,9 @@ public class ActivityCategory {
     private Long id;
 
     private String title;
-
     private Integer points;
-
-    private String type;   // institute / department
-
-    private String status; // active / inactive
+    private String type;   
+    private String status; 
 
     public ActivityCategory() {}
 
