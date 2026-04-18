@@ -1,51 +1,35 @@
 package com.edutracker.backend.service;
 
+import com.edutracker.backend.dto.ChangePasswordRequest;
 import com.edutracker.backend.model.User;
 import com.edutracker.backend.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.util.Optional;
-
 
 @Service
 public class AuthService {
 
- private final UserRepository repo;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
- public AuthService(UserRepository repo){
-  this.repo = repo;
- }
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
- public User login(String email, String password){
+    public void changePassword(ChangePasswordRequest request) {
 
- Optional<User> optionalUser = repo.findByEmail(email);
+        // 1️⃣ Find user by email
+        User user = userRepository.findByEmail(request.getEmail())
+            .orElseThrow(() -> new RuntimeException("User not found"));
 
- if(optionalUser.isPresent()){
-  User user = optionalUser.get();
+        // 2️⃣ Check old password is correct
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new RuntimeException("Old password is incorrect");
+        }
 
-  if(user.getPassword().equals(password)){
-   return user;
-  }
- }
-
- return null;
-}
-
-
-public String changePassword(String email,String oldPass,String newPass){
-
- Optional<User> optionalUser = repo.findByEmail(email);
-
- if(optionalUser.isEmpty())
-  return "User not found";
-
- User user = optionalUser.get();
-
- if(!user.getPassword().equals(oldPass))
-  return "Old password incorrect";
-
- user.setPassword(newPass);
- repo.save(user);
-
- return "Password updated";
-}
+        // 3️⃣ Encode and save new password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
 }
