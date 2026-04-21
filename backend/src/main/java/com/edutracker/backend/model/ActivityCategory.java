@@ -3,53 +3,34 @@ package com.edutracker.backend.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "activity_categories")
+@Table(name = "categories")
 public class ActivityCategory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String title;
-    private Integer points;
-    private String type;   
-    private String status; 
+    private String main;    // Group name (e.g. "Sports", "Cultural")
+    private String title;   // Activity name
+    private int points;
+    private String type;    // "institute" or "department"
+    private String status;  // "active" or "inactive"
 
-    public ActivityCategory() {}
+    // ================= Getters =================
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId()       { return id; }
+    public String getMain()   { return main; }
+    public String getTitle()  { return title; }
+    public int getPoints()    { return points; }
+    public String getType()   { return type; }
+    public String getStatus() { return status; }
 
-    public String getTitle() {
-        return title;
-    }
+    // ================= Setters =================
 
-    public Integer getPoints() {
-        return points;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public void setPoints(Integer points) {
-        this.points = points;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
+    public void setId(Long id)           { this.id = id; }
+    public void setMain(String main)     { this.main = main; }
+    public void setTitle(String title)   { this.title = title; }
+    public void setPoints(int points)    { this.points = points; }
+    public void setType(String type)     { this.type = type; }
+    public void setStatus(String status) { this.status = status; }
 }
