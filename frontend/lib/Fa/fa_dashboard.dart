@@ -7,6 +7,8 @@ import 'fa_notification_page.dart';
 import '../config/api.dart';
 import '../auth/login_page.dart';
 import 'review_application_page.dart';
+import 'student_detail_page.dart';
+import '../config/session.dart';
 
 // ══════════════════════════════════════════════════════════
 // DESIGN TOKENS
@@ -205,11 +207,16 @@ class _FADashboardState extends State<FADashboard>
     }
   }
 
-  void logout() => Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-        (_) => false,
-      );
+  void logout() async {
+    await SessionManager.clear();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (_) => false,
+    );
+  }
+
 
   void msg(String text) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -226,7 +233,7 @@ class _FADashboardState extends State<FADashboard>
     );
   }
 
-  // ── Set Goal Dialog ────────────────────────────────────
+  // ── Set Goal Dialog ─────────────────────────────────────
   void showSetGoalDialog() {
     showDialog(
       context: context,
@@ -343,7 +350,7 @@ class _FADashboardState extends State<FADashboard>
     );
   }
 
-  // ── App-bar icon button ────────────────────────────────
+  // ── App-bar icon button ──────────────────────────────────
   Widget _appBarBtn(IconData icon, VoidCallback onTap,
           {EdgeInsets margin =
               const EdgeInsets.only(right: 4)}) =>
@@ -385,7 +392,7 @@ class _FADashboardState extends State<FADashboard>
     return Scaffold(
       backgroundColor: _C.bg,
 
-      // ── PINNED BOTTOM BUTTON ─────────────────────────
+      // ── PINNED BOTTOM BUTTON ───────────────────────────
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -420,7 +427,7 @@ class _FADashboardState extends State<FADashboard>
         ),
       ),
 
-      // ── APP BAR ────────────────────────────────────────
+      // ── APP BAR ──────────────────────────────────────────
       appBar: AppBar(
         backgroundColor: _C.bg,
         elevation: 0,
@@ -461,24 +468,23 @@ class _FADashboardState extends State<FADashboard>
         ],
       ),
 
-      // ── BODY — full CustomScrollView ──────────────────
+      // ── BODY ─────────────────────────────────────────────
       body: loading
           ? _buildLoader()
           : CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
 
-                // ── HERO CARD ─────────────────────────
+                // ── HERO CARD ──────────────────────────
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: _buildHeroCard(
-                        name, department, email,
-                        total, aboveGoal),
+                        name, department, email, total, aboveGoal),
                   ),
                 ),
 
-                // ── SECTION HEADER ────────────────────
+                // ── SECTION HEADER ─────────────────────
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -516,7 +522,7 @@ class _FADashboardState extends State<FADashboard>
                   ),
                 ),
 
-                // ── STUDENT LIST ──────────────────────
+                // ── STUDENT LIST ────────────────────────
                 students.isEmpty
                     ? SliverToBoxAdapter(child: _buildEmpty())
                     : SliverPadding(
@@ -551,13 +557,12 @@ class _FADashboardState extends State<FADashboard>
                     ),
                   ),
                 ),
-
               ],
             ),
     );
   }
 
-  // ── HERO CARD ─────────────────────────────────────────
+  // ── HERO CARD ────────────────────────────────────────────
   Widget _buildHeroCard(String name, String dept, String email,
       int total, int aboveGoal) {
     return Container(
@@ -580,8 +585,6 @@ class _FADashboardState extends State<FADashboard>
       ),
       child: Column(
         children: [
-
-          // Avatar + info
           Row(
             children: [
               Container(
@@ -657,7 +660,6 @@ class _FADashboardState extends State<FADashboard>
           Divider(color: Colors.white.withOpacity(0.18), height: 1),
           const SizedBox(height: 14),
 
-          // Stat row
           Row(
             children: [
               _statPill("Students", "$total",
@@ -679,7 +681,6 @@ class _FADashboardState extends State<FADashboard>
 
           const SizedBox(height: 12),
 
-          // Goal button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -708,8 +709,7 @@ class _FADashboardState extends State<FADashboard>
   }
 
   Widget _heroChip(String label) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(6),
@@ -891,6 +891,12 @@ class _StudentTileState extends State<_StudentTile>
             offset: Offset(0, _slide.value), child: child),
       ),
       child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StudentDetailPage(student: s),
+          ),
+        ),
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
@@ -988,8 +994,7 @@ class _StudentTileState extends State<_StudentTile>
                   decoration: BoxDecoration(
                     color: ptColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: ptColor.withOpacity(0.3)),
+                    border: Border.all(color: ptColor.withOpacity(0.3)),
                   ),
                   child: Column(
                     children: [
