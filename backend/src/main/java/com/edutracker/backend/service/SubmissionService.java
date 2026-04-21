@@ -4,101 +4,124 @@ import com.edutracker.backend.model.Submission;
 import com.edutracker.backend.model.User;
 import com.edutracker.backend.repository.SubmissionRepository;
 import com.edutracker.backend.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+
+import java.util.*;
 
 @Service
 public class SubmissionService {
 
-    private final SubmissionRepository repo;
-    private final UserRepository userRepo;
+    @Autowired
+    private SubmissionRepository repository;
 
-    public SubmissionService(SubmissionRepository repo, UserRepository userRepo) {
-        this.repo = repo;
-        this.userRepo = userRepo;
-    }
+    @Autowired
+    private UserRepository userRepository;
 
-    // ========================
-    // Student submits activity
-    // ========================
+    @Autowired
+    private NotificationService notificationService;
+
+    // EmailService removed — will add back when needed
+
     public Submission submit(Submission s) {
-
         s.setStatus("PENDING");
-        return repo.save(s);
+        Submission saved = repository.save(s);
+
+        User student = userRepository.findById(s.getStudentId()).orElse(null);
+
+        if (student != null && student.getFaId() != null) {
+            User fa = userRepository.findById(student.getFaId()).orElse(null);
+
+            if (fa != null) {
+                try {
+                    notificationService.createNotificationForFa(
+                            fa.getId(),
+                            "New Submission",
+                            "Student " + student.getName() + " submitted an activity",
+                            "NEW"
+                    );
+                } catch (Exception e) {
+                    System.err.println("⚠️ FA notification failed: " + e.getMessage());
+                }
+            }
+        }
+
+        return saved;
     }
 
-    // ========================
-    // Student activity history
-    // ========================
-    public List<Submission> studentSubmissions(Long id) {
-
-        return repo.findByStudentId(id);
+    public List<Submission> studentSubmissions(Long userId) {
+        return repository.findByStudentId(userId);
     }
-
-    // ========================
-    // FA view pending
-    // ========================
-    
 
     public List<Map<String, Object>> pendingWithStudent() {
-
-    List<Map<String, Object>> list = new ArrayList<>();
-
-    List<Submission> submissions = repo.findByStatus("PENDING");
-
-    for (Submission s : submissions) {
-
-        User student = userRepo.findById(s.getStudentId()).orElseThrow();
-
-        Map<String, Object> data = new HashMap<>();
-
-        data.put("id", s.getId());
-        data.put("title", s.getTitle());
-        data.put("category", s.getCategory());
-        data.put("points", s.getPoints());
-        data.put("proofFile", s.getProofFile());
-        data.put("status", s.getStatus());
-
-        data.put("studentName", student.getName());
-        data.put("rollNo", student.getRollNo());
-
-        list.add(data);
+        List<Map<String, Object>> raw = repository.findPendingWithStudent();
+        List<Map<String, Object>> normalized = new ArrayList<>();
+        for (Map<String, Object> row : raw) {
+            Map<String, Object> clean = new LinkedHashMap<>();
+            row.forEach((key, value) -> clean.put(toCamel(key), value));
+            normalized.add(clean);
+        }
+        return normalized;
     }
 
-    return list;
-}
+    private String toCamel(String key) {
+        if (key == null) return key;
+        if (!key.contains("_") && !key.equals(key.toLowerCase())) return key;
+        Map<String, String> knownKeys = Map.of(
+            "activitygroup",  "activityGroup",
+            "activity_group", "activityGroup",
+            "prooffile",      "proofFile",
+            "proof_file",     "proofFile",
+            "studentname",    "studentName",
+            "student_name",   "studentName",
+            "rollno",         "rollNo",
+            "roll_no",        "rollNo",
+            "studentid",      "studentId",
+            "student_id",     "studentId"
+        );
+        String lower = key.toLowerCase();
+        if (knownKeys.containsKey(lower)) return knownKeys.get(lower);
+        StringBuilder sb = new StringBuilder();
+        boolean nextUpper = false;
+        for (char c : key.toCharArray()) {
+            if (c == '_') nextUpper = true;
+            else if (nextUpper) { sb.append(Character.toUpperCase(c)); nextUpper = false; }
+            else sb.append(c);
+        }
+        return sb.toString();
+    }
 
-    // ========================
-    // FA approve activity
-    // ========================
     public Submission approve(Long id) {
-
-        Submission s = repo.findById(id).orElseThrow();
-
+        Submission s = repository.findById(id).orElseThrow();
+        if (s.isReviewNotificationSent()) return s;
         s.setStatus("APPROVED");
-
-        User student = userRepo.findById(s.getStudentId()).orElseThrow();
-
-        student.setTotalPoints(student.getTotalPoints() + s.getPoints());
-
-        userRepo.save(student);
-
-        return repo.save(s);
+        s.setReviewNotificationSent(true);
+        repository.save(s);
+        User student = userRepository.findById(s.getStudentId()).orElseThrow();
+        student.setPoints(student.getPoints() + s.getPoints());
+        userRepository.save(student);
+        notificationService.createNotification(
+                s.getStudentId(),
+                "Activity Approved",
+                "Your activity \"" + s.getTitle() + "\" has been approved and points added!",
+                "APPROVED"
+        );
+        return s;
     }
 
-    // ========================
-    // FA reject activity
-    // ========================
-    public Submission reject(Long id, String remark) {
-
-        Submission s = repo.findById(id).orElseThrow();
-
+    public Submission reject(Long id, String remarks) {
+        Submission s = repository.findById(id).orElseThrow();
+        if (s.isReviewNotificationSent()) return s;
         s.setStatus("REJECTED");
-        s.setRemarks(remark);
-
-        return repo.save(s);
+        s.setRemarks(remarks);
+        s.setReviewNotificationSent(true);
+        repository.save(s);
+        notificationService.createNotification(
+                s.getStudentId(),
+                "Activity Rejected",
+                "Your activity \"" + s.getTitle() + "\" was rejected. Remarks: " + remarks,
+                "REJECTED"
+        );
+        return s;
     }
 }
