@@ -165,7 +165,14 @@ class _ReviewApplicationPageState extends State<ReviewApplicationPage>
   // ── Reject ───────────────────────────────────────────────
   Future<void> rejectRequest(int index) async {
     final id     = _get(requests[index], 'id');
-    final remark = remarkControllers[id]?.text ?? "";
+    final remark = remarkControllers[id]?.text.trim() ?? "";
+
+    // ✅ BLOCK rejection if remarks is empty
+    if (remark.isEmpty) {
+      msg("⚠️ Please enter remarks before rejecting.");
+      return;
+    }
+
     try {
       final res = await http
           .put(
@@ -440,6 +447,10 @@ class _ReviewCardState extends State<_ReviewCard>
   late Animation<double>   _slide;
   late Animation<double>   _fade;
 
+  // ✅ Prevents duplicate taps while request is in flight
+  bool _isProcessing = false;
+  String? _pendingAction; // 'approve' or 'reject'
+
   @override
   void initState() {
     super.initState();
@@ -460,6 +471,20 @@ class _ReviewCardState extends State<_ReviewCard>
   void dispose() {
     _ctrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleApprove() async {
+    if (_isProcessing) return;
+    setState(() { _isProcessing = true; _pendingAction = 'approve'; });
+    await Future.microtask(widget.onApprove); // let parent handle result
+    if (mounted) setState(() { _isProcessing = false; _pendingAction = null; });
+  }
+
+  Future<void> _handleReject() async {
+    if (_isProcessing) return;
+    setState(() { _isProcessing = true; _pendingAction = 'reject'; });
+    await Future.microtask(widget.onReject);
+    if (mounted) setState(() { _isProcessing = false; _pendingAction = null; });
   }
 
   @override
@@ -691,33 +716,54 @@ class _ReviewCardState extends State<_ReviewCard>
 
               const SizedBox(height: 12),
 
-              // ── Remarks field ─────────────────────────
-              TextField(
-                controller: widget.remarkController,
-                maxLines: 2,
-                cursorColor: _navy,
-                style: const TextStyle(
-                    color: _navy, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: "Add remarks (optional for rejection)",
-                  hintStyle: const TextStyle(
-                      color: _hint, fontSize: 13),
-                  filled: true,
-                  fillColor: _bg,
-                  prefixIcon: const Icon(Icons.comment_rounded,
-                      color: _hint, size: 18),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        const BorderSide(color: _navy, width: 1.5),
-                  ),
-                ),
+              // ── Remarks field (required for rejection) ───
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: widget.remarkController,
+                builder: (_, val, __) {
+                  final isEmpty = val.text.trim().isEmpty;
+                  return TextField(
+                    controller: widget.remarkController,
+                    maxLines: 2,
+                    cursorColor: _navy,
+                    style: const TextStyle(color: _navy, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: "Remarks (required to reject)",
+                      hintStyle: const TextStyle(color: _hint, fontSize: 13),
+                      filled: true,
+                      fillColor: _bg,
+                      prefixIcon: Icon(
+                        Icons.comment_rounded,
+                        color: isEmpty ? _red.withOpacity(0.6) : _hint,
+                        size: 18,
+                      ),
+                      suffixIcon: isEmpty
+                          ? Tooltip(
+                              message: 'Required to reject',
+                              child: Icon(Icons.info_outline_rounded,
+                                  color: _red.withOpacity(0.7), size: 16),
+                            )
+                          : const Icon(Icons.check_rounded,
+                              color: _green, size: 18),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isEmpty
+                              ? _red.withOpacity(0.4)
+                              : _border,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isEmpty ? _red : _navy,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
 
               const SizedBox(height: 14),
@@ -730,7 +776,9 @@ class _ReviewCardState extends State<_ReviewCard>
                       label: "Approve",
                       icon: Icons.check_circle_rounded,
                       color: _green,
-                      onTap: widget.onApprove,
+                      isDisabled: _isProcessing,
+                      isLoading: _isProcessing && _pendingAction == 'approve',
+                      onTap: _handleApprove,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -739,11 +787,14 @@ class _ReviewCardState extends State<_ReviewCard>
                       label: "Reject",
                       icon: Icons.cancel_rounded,
                       color: _red,
-                      onTap: widget.onReject,
+                      isDisabled: _isProcessing,
+                      isLoading: _isProcessing && _pendingAction == 'reject',
+                      onTap: _handleReject,
                     ),
                   ),
                 ],
               ),
+
             ],
           ),
         ),
@@ -778,16 +829,20 @@ class _ReviewCardState extends State<_ReviewCard>
 // ACTION BUTTON (press scale animation)
 // ══════════════════════════════════════════════════════════
 class _ActionBtn extends StatefulWidget {
-  final String     label;
-  final IconData   icon;
-  final Color      color;
-  final VoidCallback onTap;
+  final String       label;
+  final IconData     icon;
+  final Color        color;
+  final VoidCallback onTap;   // NOTE: now accepts async via _handleXxx wrappers
+  final bool         isDisabled;
+  final bool         isLoading;
 
   const _ActionBtn({
     required this.label,
     required this.icon,
     required this.color,
     required this.onTap,
+    this.isDisabled = false,
+    this.isLoading  = false,
   });
 
   @override
@@ -799,43 +854,63 @@ class _ActionBtnState extends State<_ActionBtn> {
 
   @override
   Widget build(BuildContext context) {
+    final disabled = widget.isDisabled;
+    final loading  = widget.isLoading;
+
     return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
+      onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
+      onTapUp: disabled
+          ? null
+          : (_) {
+              setState(() => _pressed = false);
+              widget.onTap();
+            },
+      onTapCancel: disabled ? null : () => setState(() => _pressed = false),
       child: AnimatedScale(
-        scale: _pressed ? 0.96 : 1.0,
+        scale: _pressed && !disabled ? 0.96 : 1.0,
         duration: const Duration(milliseconds: 110),
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: widget.color,
-            borderRadius: BorderRadius.circular(13),
-            boxShadow: [
-              BoxShadow(
-                color: widget.color.withOpacity(0.28),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(widget.icon, color: Colors.white, size: 18),
-              const SizedBox(width: 7),
-              Text(
-                widget.label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
+        child: AnimatedOpacity(
+          opacity: disabled ? 0.55 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: widget.color,
+              borderRadius: BorderRadius.circular(13),
+              boxShadow: disabled
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: widget.color.withOpacity(0.28),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (loading)
+                  const SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.2,
+                    ),
+                  )
+                else
+                  Icon(widget.icon, color: Colors.white, size: 18),
+                const SizedBox(width: 7),
+                Text(
+                  widget.label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
