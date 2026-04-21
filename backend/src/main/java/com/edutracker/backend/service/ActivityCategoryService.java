@@ -28,6 +28,7 @@ public class ActivityCategoryService {
         ActivityCategory existing = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
+        existing.setMain(category.getMain());     // ← ADDED
         existing.setTitle(category.getTitle());
         existing.setPoints(category.getPoints());
         existing.setType(category.getType());
